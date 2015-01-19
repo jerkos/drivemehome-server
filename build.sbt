@@ -2,10 +2,10 @@ name := "drivemehome-server"
 
 version := "1.0"
 
-lazy val `drivemehome-server` = (project in file(".")).enablePlugins(PlayJava)
+lazy val `drivemehome-server` = (project in file(".")).enablePlugins(PlayScala)
 
 scalaVersion := "2.11.1"
 
-libraryDependencies ++= Seq( javaJdbc , javaEbean , cache , javaWs )
+libraryDependencies ++= Seq( jdbc , anorm , cache , ws )
 
 unmanagedResourceDirectories in Test <+=  baseDirectory ( _ /"target/web/public/test" )  
