@@ -1,15 +1,72 @@
 package controllers
 
+import akka.actor.Props
+import models._
+
 import play.api._
+import play.api.libs.concurrent.Akka
 import play.api.libs.iteratee.{Concurrent, Enumerator, Iteratee}
-import play.api.libs.json.{Json, JsNull}
 import play.api.mvc._
+import play.api.libs.json._
+import play.api.Play.current
+
+import scala.concurrent.Future
+
+// Reactive Mongo plugin, including the JSON-specialized collection
+import play.modules.reactivemongo.MongoController
+import play.modules.reactivemongo.json.collection.JSONCollection
+
+import reactivemongo.api._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+
+import akka.pattern.ask
+
+case class User(name: String, email: String = "")
+
+object Application extends Controller with MongoController {
 
 
-import concurrent.ExecutionContext.Implicits.global
+  def userCollection = db.collection[JSONCollection]("users")
+  def pathCollection = db.collection[JSONCollection]("path")
+
+  // ugly have to make several channels
+  val (out, channel) = Concurrent.broadcast[JsValue]
 
 
-object Application extends Controller {
+  def insertTest() = {
+    userCollection.insert(
+      Json.obj(
+        "name" -> "Marco",
+        "email" -> "cram@hotmail.fr"
+      )
+    )
+  }
+
+  def insertPath(polyline: String) = {
+    Logger.debug("inserting path")
+    //val cursor: Cursor[JsObject] = null
+    val cursor = userCollection.find(Json.obj("name"->"Marco")).cursor[JsObject]
+
+    cursor.collect[List]().map { users =>
+
+      if (users.isEmpty) {
+        Logger.debug("insert marco user")
+        insertTest()
+      }
+      val u = users(0)
+      println(u)
+      val driverM = ( u \ "_id")
+      pathCollection.insert(
+        Json.obj(
+          "overview_polyline" -> polyline,
+          "driver" -> driverM
+        )
+      )
+    }
+  }
+
 
   def index = Action {
     Ok(views.html.index("Your new application is ready."))
@@ -43,10 +100,41 @@ object Application extends Controller {
 
   }
 
-  def wsOpened = WebSocket.using[String] { request =>
-      val in: Iteratee[String, Unit] = Iteratee.foreach[String](println(_))
-      val out = Enumerator[String]("Hello")
-      (in, out)
+//  def onDriverConnection = WebSocket.using[JsValue] { request =>
+//    Logger.debug("inside driver websocket")
+//    val in = Iteratee.foreach[JsValue]{ json =>
+//      val encodedPoly = (json \ "overview_polyline" \ "points").as[String]
+//      insertPath(encodedPoly)
+//      channel.push(Json.obj("response"->"hello boy"))
+//    }
+//    (in, out)
+//  }
 
+  // init room
+  val room = Akka.system.actorOf(Props[Room])
+
+  def onDriverConnection(username: String) = WebSocket.async[JsValue] { request =>
+      Logger.debug("inside driver websocket")
+      (room ? Driver(username))(5 seconds).mapTo[(Iteratee[JsValue, _], Enumerator[JsValue])]
+
+//    val in = Iteratee.foreach[JsValue]{ json =>
+//      val encodedPoly = (json \ "routes" \"overview_polyline" \ "points").as[String]
+//      insertPath(encodedPoly)
+//      channel.push(Json.obj("response"->"hello boy"))
+//    }
+//    Future {
+//      Right((in, out))
+//    }
+  }
+
+  def onWalkerConnection(username: String) = WebSocket.async[JsValue] { request =>
+    Logger.debug("inside walker websocket")
+      (room ? Walker(username))(5 seconds).mapTo[(Iteratee[JsValue, _], Enumerator[JsValue])]
+
+//    //val (out, channel)  = Concurrent.broadcast[JsValue]
+//    val in = Iteratee.foreach[JsValue] { jsValue =>
+//      channel.push(Json.obj("pedestrian-event" -> jsValue))
+//    }
+//    (in, out)
   }
 }
