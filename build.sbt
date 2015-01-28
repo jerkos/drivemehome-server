@@ -10,7 +10,8 @@ libraryDependencies ++= Seq(jdbc ,
                             anorm ,
                             cache ,
                             ws,
-                            "org.reactivemongo" %% "play2-reactivemongo" % "0.10.5.0.akka23")
+                            "org.reactivemongo" %% "play2-reactivemongo" % "0.10.5.0.akka23",
+                            "com.google.maps" % "google-maps-services" % "0.1.5")
                             //"com.google.maps" %% "google-maps-services" % "0.1.5")
 
 unmanagedResourceDirectories in Test <+=  baseDirectory ( _ /"target/web/public/test" )  

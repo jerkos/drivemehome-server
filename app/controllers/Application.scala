@@ -23,7 +23,6 @@ import scala.concurrent.duration._
 
 import akka.pattern.ask
 
-case class User(name: String, email: String = "")
 
 object Application extends Controller with MongoController {
 
@@ -116,25 +115,10 @@ object Application extends Controller with MongoController {
   def onDriverConnection(username: String) = WebSocket.async[JsValue] { request =>
       Logger.debug("inside driver websocket")
       (room ? Driver(username))(5 seconds).mapTo[(Iteratee[JsValue, _], Enumerator[JsValue])]
-
-//    val in = Iteratee.foreach[JsValue]{ json =>
-//      val encodedPoly = (json \ "routes" \"overview_polyline" \ "points").as[String]
-//      insertPath(encodedPoly)
-//      channel.push(Json.obj("response"->"hello boy"))
-//    }
-//    Future {
-//      Right((in, out))
-//    }
   }
 
   def onWalkerConnection(username: String) = WebSocket.async[JsValue] { request =>
     Logger.debug("inside walker websocket")
       (room ? Walker(username))(5 seconds).mapTo[(Iteratee[JsValue, _], Enumerator[JsValue])]
-
-//    //val (out, channel)  = Concurrent.broadcast[JsValue]
-//    val in = Iteratee.foreach[JsValue] { jsValue =>
-//      channel.push(Json.obj("pedestrian-event" -> jsValue))
-//    }
-//    (in, out)
   }
 }
